@@ -31,7 +31,7 @@ GR00T는 `action_horizon=10`으로 학습했는데, 이건 `marker_100`이 아�
 
 GR00T h10 config는 `--lora-full-model`을 안 줬기 때문에 LoRA가 action head(약 655만 파라미터)에만 붙고, Eagle-2 VLM 백본은 30,000 step 내내 한 번도 업데이트되지 않습니다. 정책은 사전학습 때 본 일반적인 시각 특징을 그대로 쓰고, action head만 이 로봇 동작에 맞춰 학습됩니다.
 
-**검증 결과**: `--lora-full-model`로 백본까지 LoRA를 붙여 재학습한 fulllora는 35%→~40%로 소폭만 개선됐습니다. 백본 동결이 어느 정도는 병목이었을 수 있지만, 이 정도 개선폭으로는 π0와의 격차(80%+ vs ~40%, 40%p 이상)를 설명하기엔 부족합니다 — **#1의 action_horizon 불일치가 더 지배적인 원인일 가능성이 높아짐**.
+**검증 결과**: `--lora-full-model`로 백본까지 LoRA를 붙여 재학습한 fulllora는 35%→~40%로 소폭만 개선됐습니다. 이 비교는 `action_horizon=10`, `denoising_steps=4`를 h10과 동일하게 고정한 채 **LoRA 대상(백본 포함 여부)만** 바꾼 것이므로, 확인되는 건 "백본 동결 단독으로는 π0와의 격차를 대부분 설명하지 못한다"는 것뿐입니다. action_horizon이나 denoising steps는 이 실험에서 전혀 바뀌지 않았기 때문에, 이 결과를 근거로 **#1(action_horizon)이나 #4(denoising steps)가 "더 유력해졌다"고 말할 수는 없습니다** — 둘 다 여전히 별도로 검증이 필요한, 지금까지와 동일한 무게의 가설입니다.
 
 ### 3. 표본 크기 (통계적 주의사항)
 
@@ -43,7 +43,7 @@ GR00T h10 config는 `--lora-full-model`을 안 줬기 때문에 LoRA가 action h
 
 ## 다음에 시도해볼 것
 
-1. `action_horizon=30`(π0와 동일 기준)으로 GR00T 재학습 — fulllora가 격차를 크게 못 줄인 것으로 봐서 가장 유력한 다음 시도. 이 문서 시점까지 미시도 (`custom_data_configs.py`엔 여전히 `So101MarkerH10DataConfig`만 있음)
+1. `action_horizon=30`(π0와 동일 기준)으로 GR00T 재학습 — fulllora 실험은 이 변수를 건드리지 않았으므로 여전히 미검증. 근거(§1)는 그대로 유효하나 fulllora 결과가 이를 뒷받침하는 건 아님. 이 문서 시점까지 미시도 (`custom_data_configs.py`엔 여전히 `So101MarkerH10DataConfig`만 있음)
 2. ~~fulllora(`--lora-full-model`) 결과를 실제 sim 평가로 정량화~~ — 완료, ~40% (위 표)
 3. denoising-steps 8~16으로 늘려서 추론만 재테스트 (재학습 불필요, 가장 저렴)
 4. 정확한 시행 횟수를 기록하며 eval_rounds 30~50으로 재평가해 신뢰구간 좁히기 (h10/fulllora 둘 다)
