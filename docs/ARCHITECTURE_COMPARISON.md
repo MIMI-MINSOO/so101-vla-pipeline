@@ -9,11 +9,11 @@
 | 데이터셋 | `marker_100` (97 episodes) | 동일 | 동일 |
 | action_horizon | **30** | **10** | **10** |
 | LoRA 대상 | 백본(2B, rank16) + action expert(300M, rank32) | action head만(rank32), 백본 완전 동결 | 백본 포함(`--lora-full-model`) |
-| sim 성공률 (20회) | **80%+** | **35%** (7/20) | 재학습 실행됨, 이 문서 기준 정량 결과 미확인 |
+| sim 성공률 | **80%+** (20회) | **35%** (7/20) | **~40%** (정확한 시행 횟수 미기록) |
 
-> ⚠️ fulllora 결과: 학습/병합/업로드까지는 `patches/groot/train_fulllora_and_upload.sh`로 실행됐고 체크포인트가 `mimiminsoo/groot_h10_fulllora`로 존재하지만, 이 문서 저장소가 참조하는 로컬 기록(`PIPELINE_NOTES.md`, 2026-08-07~10 작성)엔 fulllora의 sim 평가 성공률이 남아있지 않습니다. 재평가 후 이 표를 갱신하세요.
+> fulllora 결과: `patches/groot/train_fulllora_and_upload.sh`로 학습/병합/업로드까지 실행되어 `mimiminsoo/groot_h10_fulllora`로 존재하며, sim 평가 성공률은 약 40%로 확인됨(h10 대비 +5%p). 다만 정확한 시행 횟수/신뢰구간은 기록이 남아있지 않아 §3의 표본 크기 주의사항이 h10보다도 더 크게 적용됩니다.
 
-## 성공률 격차 분석 (π0 80%+ vs GR00T h10 35%)
+## 성공률 격차 분석 (π0 80%+ vs GR00T h10 35% / fulllora ~40%)
 
 같은 데이터셋인데도 큰 차이가 났습니다. 확신도 순으로 정리합니다.
 
@@ -29,11 +29,13 @@ GR00T는 `action_horizon=10`으로 학습했는데, 이건 `marker_100`이 아�
 
 π0의 LoRA는 백본(2B) + action expert(300M) 전체에 걸립니다 — 씬의 "marker"와 "cup"을 어떻게 시각적으로 인식할지까지 같이 적응합니다.
 
-GR00T h10 config는 `--lora-full-model`을 안 줬기 때문에 LoRA가 action head(약 655만 파라미터)에만 붙고, Eagle-2 VLM 백본은 30,000 step 내내 한 번도 업데이트되지 않습니다. 정책은 사전학습 때 본 일반적인 시각 특징을 그대로 쓰고, action head만 이 로봇 동작에 맞춰 학습됩니다. 마커처럼 작고 위치 정밀도가 중요한 물체를 다루는 태스크에서는 백본이 씬에 적응하지 못한 게 병목이었을 가능성이 있습니다. (→ fulllora 재학습으로 검증 시도, 위 표 참고)
+GR00T h10 config는 `--lora-full-model`을 안 줬기 때문에 LoRA가 action head(약 655만 파라미터)에만 붙고, Eagle-2 VLM 백본은 30,000 step 내내 한 번도 업데이트되지 않습니다. 정책은 사전학습 때 본 일반적인 시각 특징을 그대로 쓰고, action head만 이 로봇 동작에 맞춰 학습됩니다.
+
+**검증 결과**: `--lora-full-model`로 백본까지 LoRA를 붙여 재학습한 fulllora는 35%→~40%로 소폭만 개선됐습니다. 백본 동결이 어느 정도는 병목이었을 수 있지만, 이 정도 개선폭으로는 π0와의 격차(80%+ vs ~40%, 40%p 이상)를 설명하기엔 부족합니다 — **#1의 action_horizon 불일치가 더 지배적인 원인일 가능성이 높아짐**.
 
 ### 3. 표본 크기 (통계적 주의사항)
 
-7/20 = 35%의 95% 신뢰구간은 대략 17%~58%로 넓습니다. π0와의 격차 자체는 크게 봐서 실재하지만, 35%라는 숫자를 너무 정밀하게 믿지는 않는 게 좋습니다.
+7/20 = 35%의 95% 신뢰구간은 대략 17%~58%로 넓습니다. fulllora의 ~40%는 시행 횟수 자체가 기록에 없어 신뢰구간을 계산할 수도 없습니다. π0와의 격차 자체는 크게 봐서 실재하지만, 35%/40%라는 숫자를 너무 정밀하게 믿지는 않는 게 좋습니다.
 
 ### 4. denoising steps (미검증 가설)
 
@@ -41,7 +43,7 @@ GR00T h10 config는 `--lora-full-model`을 안 줬기 때문에 LoRA가 action h
 
 ## 다음에 시도해볼 것
 
-1. `action_horizon=30`(π0와 동일 기준)으로 GR00T 재학습 — 근거가 가장 뚜렷하지만, 이 문서 시점까지 시도되지 않음 (`custom_data_configs.py`엔 여전히 `So101MarkerH10DataConfig`만 있음)
-2. fulllora(`--lora-full-model`) 결과를 실제 sim 평가로 정량화
+1. `action_horizon=30`(π0와 동일 기준)으로 GR00T 재학습 — fulllora가 격차를 크게 못 줄인 것으로 봐서 가장 유력한 다음 시도. 이 문서 시점까지 미시도 (`custom_data_configs.py`엔 여전히 `So101MarkerH10DataConfig`만 있음)
+2. ~~fulllora(`--lora-full-model`) 결과를 실제 sim 평가로 정량화~~ — 완료, ~40% (위 표)
 3. denoising-steps 8~16으로 늘려서 추론만 재테스트 (재학습 불필요, 가장 저렴)
-4. 개선되면 eval_rounds를 30~50으로 늘려 신뢰구간 좁히기
+4. 정확한 시행 횟수를 기록하며 eval_rounds 30~50으로 재평가해 신뢰구간 좁히기 (h10/fulllora 둘 다)
