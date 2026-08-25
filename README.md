@@ -24,7 +24,6 @@ Isaac Sim Teleop (SO-101 leader arm)
         │
         └──▶ GR00T N1.5 LoRA fine-tuning ──▶ Sim Eval                            ← Architecture Comparison
 
-                                                          RL Fine-tuning (skrl PPO, staged reward)  ← Research Extension, 별도 진행 중
 ```
 
 ## 문서 목록
