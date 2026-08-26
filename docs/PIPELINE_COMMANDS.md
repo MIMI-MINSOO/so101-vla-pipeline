@@ -1,6 +1,12 @@
 # Pipeline Commands
 
-복붙 가능한 명령어 모음입니다. `$LEISAAC_ROOT` / `$OPENPI_ROOT` / `$GROOT_ROOT`는 각 코드베이스를 clone한 경로로 바꿔서 쓰세요 (예: `~/IsaacLab/source/leisaac`, `~/openpi`, `~/Isaac-GR00T`).
+복붙 가능한 명령어 모음입니다. 이 문서 전체에서 `$LEISAAC_ROOT` / `$OPENPI_ROOT` / `$GROOT_ROOT`를 씁니다 — **본문 텍스트를 직접 고쳐 쓰지 말고, 아래처럼 실제 쉘 변수로 먼저 export하세요.** (`$LEISAAC_ROOT`를 export 없이 그대로 복붙하면 빈 문자열로 치환되어 `cd $LEISAAC_ROOT`가 `cd`(인자 없음) → 홈 디렉토리로 이동해버리고, 그 상태에서 만든 `LEISAAC_ASSETS_ROOT` 등 다른 변수까지 줄줄이 잘못된 값으로 export되니 주의하세요.)
+
+```bash
+export LEISAAC_ROOT=~/IsaacLab/source/leisaac
+export OPENPI_ROOT=~/openpi
+export GROOT_ROOT=~/Isaac-GR00T
+```
 
 각 코드베이스는 **완전히 분리된 venv**를 씁니다 (conda 미사용, `uv` 기반). git-lfs가 필요합니다 (`.usd`/`.hdf5` 에셋이 LFS로 관리됨).
 
