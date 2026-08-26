@@ -1,11 +1,11 @@
 # Pipeline Commands
 
-복붙 가능한 명령어 모음입니다. 이 문서 전체에서 `$LEISAAC_ROOT` / `$OPENPI_ROOT` / `$GROOT_ROOT`를 씁니다 — **본문 텍스트를 직접 고쳐 쓰지 말고, 아래처럼 실제 쉘 변수로 먼저 export하세요.** (`$LEISAAC_ROOT`를 export 없이 그대로 복붙하면 빈 문자열로 치환되어 `cd $LEISAAC_ROOT`가 `cd`(인자 없음) → 홈 디렉토리로 이동해버리고, 그 상태에서 만든 `LEISAAC_ASSETS_ROOT` 등 다른 변수까지 줄줄이 잘못된 값으로 export되니 주의하세요.)
+복붙 가능한 명령어 모음입니다. 아래 디렉토리 레이아웃을 그대로 가정합니다 (변수 대신 실제 경로를 씀 — 다르게 두셨다면 경로만 바꿔서 쓰세요):
 
-```bash
-export LEISAAC_ROOT=~/IsaacLab/source/leisaac
-export OPENPI_ROOT=~/openpi
-export GROOT_ROOT=~/Isaac-GR00T
+```text
+~/IsaacLab/source/leisaac   LeIsaac fork
+~/openpi                    openpi fork
+~/Isaac-GR00T                Isaac-GR00T
 ```
 
 각 코드베이스는 **완전히 분리된 venv**를 씁니다 (conda 미사용, `uv` 기반). git-lfs가 필요합니다 (`.usd`/`.hdf5` 에셋이 LFS로 관리됨).
@@ -68,8 +68,8 @@ pip install "https://github.com/Dao-AILab/flash-attention/releases/download/v2.7
 
 ```bash
 source ~/IsaacLab/env_isaaclab/bin/activate
-cd $LEISAAC_ROOT
-export LEISAAC_ASSETS_ROOT=$(pwd)/assets   # 반드시 /assets까지! (repo root만 주면 경로가 틀어짐)
+cd ~/IsaacLab/source/leisaac
+export LEISAAC_ASSETS_ROOT=~/IsaacLab/source/leisaac/assets   # 반드시 /assets까지! (repo root만 주면 경로가 틀어짐)
 
 python scripts/environments/teleoperation/teleop_se3_agent.py \
     --task=LeIsaac-SO101-CupStack-v0 \
@@ -81,6 +81,8 @@ python scripts/environments/teleoperation/teleop_se3_agent.py \
     --dataset_file=./datasets/marker_100/dataset.hdf5
 ```
 조작키: `b`=시작, `n`=성공 종료, `r`=실패 리셋. 최초 실행 시 SO101Leader 캘리브레이션이 대화형으로 진행됩니다.
+
+> `export LEISAAC_ASSETS_ROOT=...`는 **터미널 세션마다** 다시 실행해야 합니다. `cd`한다고 자동으로 갱신되지 않고, 한 번 잘못된 값으로 export되면 그 세션 안에서 계속 남아있으니 새 터미널을 여는 게 헷갈릴 때 가장 빠른 해결책입니다.
 
 ## 2. HDF5 → LeRobot Dataset 변환
 
@@ -101,7 +103,7 @@ python scripts/convert/isaaclab2lerobotv3.py \
 ## 3-A. openpi π0 LoRA fine-tuning
 
 ```bash
-cd $OPENPI_ROOT
+cd ~/openpi
 export XLA_PYTHON_CLIENT_MEM_FRACTION=0.9
 
 # config.py에 patches/openpi_config_pi0_lora_marker_100.py 내용을 TrainConfig 목록에 추가한 뒤
@@ -111,6 +113,7 @@ uv run scripts/train.py pi0_lora_marker_100 --exp-name=marker100_h30
 
 **서버 기동:**
 ```bash
+cd ~/openpi
 export XLA_PYTHON_CLIENT_MEM_FRACTION=0.35
 uv run scripts/serve_policy.py \
     --port 8000 \
@@ -123,7 +126,7 @@ uv run scripts/serve_policy.py \
 **Sim 평가 (다른 터미널, IsaacLab venv):**
 ```bash
 source ~/IsaacLab/env_isaaclab/bin/activate
-cd $LEISAAC_ROOT
+cd ~/IsaacLab/source/leisaac
 python scripts/evaluation/policy_inference.py \
     --task=LeIsaac-SO101-CupStack-v0 \
     --eval_rounds=20 \
@@ -140,20 +143,22 @@ python scripts/evaluation/policy_inference.py \
 
 ```bash
 # meta/modality.json 배치 (LeRobot 데이터셋에 GR00T가 요구하는 스키마 추가)
-cp $GROOT_ROOT/examples/SO-100/so100_dualcam__modality.json \
+cp ~/Isaac-GR00T/examples/SO-100/so100_dualcam__modality.json \
     ~/.cache/huggingface/lerobot/<your-hf-username>/marker_100/meta/modality.json
 
-# patches/groot/custom_data_configs.py 를 $GROOT_ROOT/ 에 복사한 뒤
-cd $GROOT_ROOT
+# patches/groot/custom_data_configs.py 를 ~/Isaac-GR00T/ 에 복사한 뒤
+cd ~/Isaac-GR00T
 source .venv/bin/activate
 bash patches/groot/run_finetune_cupstack.sh   # 또는 train_fulllora_and_upload.sh (백본까지 LoRA)
 ```
 
 **서버 기동:**
 ```bash
-python $GROOT_ROOT/scripts/inference_service.py \
+cd ~/Isaac-GR00T
+source .venv/bin/activate
+python scripts/inference_service.py \
     --server \
-    --model-path $GROOT_ROOT/cupstack-checkpoints/checkpoint-30000-merged \
+    --model-path ~/Isaac-GR00T/cupstack-checkpoints/checkpoint-30000-merged \
     --embodiment-tag new_embodiment \
     --data-config custom_data_configs:So101MarkerH10DataConfig \
     --denoising-steps 4 --port 5555
@@ -162,7 +167,7 @@ python $GROOT_ROOT/scripts/inference_service.py \
 **Sim 평가:**
 ```bash
 source ~/IsaacLab/env_isaaclab/bin/activate
-cd $LEISAAC_ROOT
+cd ~/IsaacLab/source/leisaac
 pip install -e ".[gr00t]"   # pyzmq/pydantic/msgpack (한 번만)
 
 python scripts/evaluation/policy_inference.py \
@@ -182,7 +187,7 @@ python scripts/evaluation/policy_inference.py \
 
 ```bash
 source ~/IsaacLab/env_isaaclab/bin/activate
-cd $LEISAAC_ROOT
+cd ~/IsaacLab/source/leisaac
 python scripts/evaluation/real_robot_inference.py \
     --robot_port=/dev/ttyACM0 \
     --front_camera_index=/dev/v4l/by-path/<front-camera-path> \
