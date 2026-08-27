@@ -1,17 +1,154 @@
 # Troubleshooting
 
-실제로 겪었거나 코드 감사 과정에서 확인된 문제들입니다. `Error → Cause → Fix → Verification` 형식이며, 근거가 코드/커밋으로 확인된 것만 담았습니다.
+**실행 자체가 막히는 오류**만 모았습니다. 각 항목은 `증상 → 원인 → 해결` 순입니다.
 
-| # | 증상 | 원인 | 수정 | 검증 |
-|---|---|---|---|---|
-| 1 | `gymnasium.error.NameNotFound: LeIsaac-...` | IsaacLab의 범용 `scripts/reinforcement_learning/*/train.py`는 `leisaac`을 import하지 않아 `LeIsaac-*` gym id가 등록 안 됨 | leisaac 로컬 사본에 `import leisaac` 한 줄 추가 (`scripts/reinforcement_learning/skrl/{train,play}.py`) | 해당 스크립트로 `--task LeIsaac-...` 정상 실행 |
-| 2 | 에셋(USD) 경로를 못 찾음 / 엉뚱한 디렉토리를 가리킴 | `LEISAAC_ASSETS_ROOT`를 설정하면 코드가 `/assets`를 자동으로 붙여주지 않음(`constant.py:_resolve_assets_root`) — 리포 루트(`.../leisaac`)까지만 주면 틀림 | `LEISAAC_ASSETS_ROOT=<leisaac_repo>/assets`까지 명시(또는 아예 미설정 → git-root 자동탐지가 알아서 `/assets` 붙임) | `python -c "from leisaac.utils.constant import ASSETS_ROOT; print(ASSETS_ROOT)"` 로 확인 |
-| 3 | clone 직후 `.usd`/`.hdf5` 파일이 몇 백 바이트짜리 텍스트 | `git-lfs` 미설치 상태로 clone하면 LFS 포인터 파일만 받아짐(`.gitattributes`에 `*.usd`, `*.hdf5` 등이 lfs로 지정됨) | `sudo apt-get install git-lfs && git lfs install --skip-repo` 후 `git lfs pull` | `file assets/robots/so101_follower.usd` → `USD crate` 나와야 정상 (LFS 포인터면 `ASCII text`로 나옴) |
-| 4 | GUI에서 마커가 팔에 닿자마자 수십cm~1m 튕겨나감 | `RigidObjectCfg`에 `max_depenetration_velocity` 미설정 → PhysX 전역 기본값 사용, 가벼운 물체(20g)+부정확한 자동 collision 근사(convexHull fallback) 조합에서 접촉 시 비정상적으로 큰 반발 속도 발생 | `max_depenetration_velocity=2.0`, `solver_position_iteration_count=16` 등 명시 (IsaacLab 공식 Franka Lift cube 참고 값) | GUI에서 접촉 시 마커가 정상 궤적으로만 움직이는지 확인 |
-| 5 | RL 정책 학습 중 팔이 "배속"처럼 빠르게 움직임 | 전역 `SO101_FOLLOWER_CFG`의 `sts3215-arm` 액추에이터가 `velocity_limit_sim=10 rad/s`(≈95RPM) — 서보 실제 카탈로그 no-load 속도(52RPM≈5.45rad/s)보다 빠름. teleop(사람 속도 제한)에선 안 드러나지만 RL이 매 스텝 크게 다른 target을 낼 때 실제로 이 속도까지 팔이 움직임 | RL 전용 env cfg의 `__post_init__`에서 `.replace()`로 arm actuator만 `velocity_limit_sim=3.0`으로 낮춘 사본 사용(teleop용 전역 설정은 안 건드림) | 진단 스크립트로 적용된 궤적이 매끄러운지 확인 |
-| 6 | RL 정책이 팔을 관절 한계까지 몰아붙이며 진동 | `use_teleop_device("so101leader")`가 설정하는 `JointPositionActionCfg`는 raw 출력을 bound 없이 절대 목표로 그대로 전달 — 정책이 실제 관절 한계(±1.75rad)를 훨씬 벗어난 값(예: +12.98rad)을 내도 구분이 안 됨 | `EMAJointPositionToLimitsActionCfg`(clamp[-1,1] → 실제 joint 한계로 rescale, `alpha=0.2` EMA 스무딩)로 교체 | 진단 스크립트로 명령된 target이 실제 관절 범위 안에서 부드럽게 변하는지 확인 |
-| 7 | state-only RL 정책이 마커를 한 번 놓치면 다시 못 쫓아감 | observation에 로봇 proprioception만 있고 마커/컵 위치가 전혀 없음 — 놓친 걸 관측할 방법이 없어 open-loop 궤적을 외운 것처럼 동작 | `marker_pos_b`/`marker_quat_b`/`cup_pos_b` observation term 추가 (robot base frame 기준) | recovery 행동이 GUI에서 관찰되는지 확인 |
-| 8 | `--policy_action_horizon`을 학습 때 값과 다르게 주면 안 될 것 같다는 오해 | 서버는 체크포인트에 고정된 길이(예: 30)의 action chunk를 항상 반환하고, 클라이언트는 `min(policy_action_horizon, chunk_len)`만큼만 실행 — 예측 길이가 아니라 **실행(receding) horizon**일 뿐 | eval 시 학습값보다 작은 값(10, 20 등)으로 자유롭게 실행 가능. 단, 학습(60Hz 간격)과 추론 실행 주기가 다르면 같은 궤적을 시간축으로 왜곡해 재생하는 효과가 생길 수 있음(#9 참고) | `service_policy_clients.py`의 `get_action()`이 서버에 horizon을 전달하지 않음을 코드로 확인 |
-| 9 | 수집 데이터셋 `fps=30`을 그대로 믿고 "action_horizon=30 = 1초"라고 계산하면 틀림 | teleop 기본 `step_hz=60`, `decimation=1`(물리 dt=1/60)로 실제 60Hz 기록됨. `isaaclab2lerobotv3.py`는 다운샘플 없이 프레임을 1:1로 옮기고 `--fps`(기본 30)는 메타데이터 라벨일 뿐 | 실제 물리 시간 = `action_horizon / 60`(초)로 계산. 재현 시 진짜 30Hz로 만들고 싶다면 변환 스크립트에 2:1 다운샘플 로직 추가 필요(현재 없음) | HDF5 `total` 어트리뷰트 vs LeRobot `total_frames` 차이가 "5프레임 skip×episode 수"와만 정합되고 다운샘플 배수와는 무관함을 확인 |
-| 10 | openpi `--policy_action_horizon`/`--policy_port` 기본값이 GR00T용 값(5555, 16)으로 보임 | `policy_inference.py`의 최초 커밋(`218f730`)이 GR00T N1.5 전용으로 작성됨(`choices=["gr00tn1.5"]`) — 이후 openpi/lerobot 지원이 추가됐지만 그 시절 default는 갱신 안 됨 | openpi 사용 시 `--policy_port`/`--policy_action_horizon`을 반드시 명시적으로 지정 (`eval_marker_100.sh`가 이렇게 함) | 스크립트에 해당 값이 명시적으로 들어있는지 확인 |
-| 11 | `uv add wandb`가 필요했음 | openpi `pyproject.toml`의 wandb 하한(`>=0.19.1`)에서 설치 실패, `uv add "wandb>=0.16.0"`으로 낮춰서 해결한 이력 — 정확한 버전 충돌 원인은 기록 없음 | 동일 오류 재현 시 `uv add "wandb>=0.16.0"` | [확인 필요] 정확한 충돌 로그는 남아있지 않음 |
+---
+
+## 공통 / 설치
+
+### clone 직후 `.usd`/`.hdf5` 파일이 몇 백 바이트짜리 텍스트
+
+- **증상**: Isaac Sim이 USD를 못 읽거나, 데이터셋 파일이 이상하게 작음
+- **원인**: `git-lfs` 없이 clone하면 LFS 포인터 파일만 받아짐 (`.gitattributes`에 `*.usd`, `*.hdf5`가 lfs로 지정돼 있음)
+- **해결**:
+  ```bash
+  sudo apt-get install -y git-lfs
+  git lfs install --skip-repo
+  cd ~/IsaacLab/source/leisaac && git lfs pull
+  ```
+- **확인**: `file assets/robots/so101_follower.usd` → `USD crate`가 나와야 정상 (`ASCII text`면 아직 포인터)
+
+---
+
+## IsaacLab / LeIsaac
+
+### `gymnasium.error.NameNotFound: LeIsaac-...`
+
+- **원인**: IsaacLab의 범용 `scripts/reinforcement_learning/*/train.py`는 `leisaac`을 import하지 않아 `LeIsaac-*` gym id가 등록되지 않음
+- **해결**: leisaac 저장소 안의 사본(`source/leisaac/scripts/reinforcement_learning/skrl/{train,play}.py`)을 쓰세요. upstream과의 차이는 `import leisaac` 한 줄뿐입니다.
+
+### `FileNotFoundError: USD file not found at path at: '/home/<user>/assets/...'`
+
+- **증상**: 에셋 경로가 홈 디렉토리 같은 엉뚱한 곳을 가리킴
+- **원인**: `LEISAAC_ASSETS_ROOT`를 설정하면 코드가 `/assets`를 자동으로 붙여주지 않습니다 (`leisaac/utils/constant.py`의 `_resolve_assets_root`). 저장소 루트까지만 주면 하위 경로가 전부 어긋납니다.
+- **해결**: `/assets`까지 명시
+  ```bash
+  export LEISAAC_ASSETS_ROOT=~/IsaacLab/source/leisaac/assets
+  ```
+- **주의**: 이 값은 **터미널 세션마다** 다시 설정해야 합니다. `cd`한다고 갱신되지 않고, 한 번 잘못 export하면 그 세션 내내 남아있습니다. 헷갈리면 새 터미널을 여는 게 가장 빠릅니다.
+- **확인**: `echo $LEISAAC_ASSETS_ROOT`
+
+---
+
+## openpi (π0)
+
+### `Not enough GPU memory available to create a PhysicsScene` (평가 시)
+
+- **원인**: JAX는 GPU 메모리를 비율만큼 미리 예약합니다. 기본값(75%)이면 정책 서버가 대부분을 가져가서 Isaac Sim의 PhysX가 물리 씬을 만들 메모리가 남지 않습니다.
+- **해결**: 서버 기동 전에 비율을 낮추세요.
+  ```bash
+  export XLA_PYTHON_CLIENT_MEM_FRACTION=0.35
+  ```
+  학습할 때는(Isaac Sim이 안 떠 있으므로) `0.9`까지 써도 됩니다.
+
+### 학습 시작 시 `RESOURCE_EXHAUSTED`
+
+- **원인**: 정책 서버 등 다른 GPU 프로세스가 이미 떠 있는 상태에서 학습을 시작함
+- **해결**: `nvidia-smi`로 확인하고 해당 프로세스를 종료한 뒤 다시 실행
+
+### `Missing norm stats` 또는 이상하게 정규화된 학습
+
+- **원인**: `compute_norm_stats.py`를 실행하지 않았거나, 데이터셋/`action_horizon`이 바뀌었는데 예전 통계가 남아있음
+- **해결**:
+  ```bash
+  uv run scripts/compute_norm_stats.py --config-name pi0_lora_marker_100
+  ```
+  기존 통계를 강제로 다시 만들려면 `assets/<config_name>/.../norm_stats.json`을 지우고 재실행
+
+### wandb 설치 충돌
+
+- **증상**: 의존성 해결 실패로 설치가 안 됨
+- **해결**: `uv add "wandb>=0.16.0"` (openpi 기본 하한 `>=0.19.1`을 낮춤)
+
+---
+
+## Isaac-GR00T
+
+### `NameError: name 'zmq' is not defined` (평가 클라이언트)
+
+- **원인**: leisaac에 GR00T용 추가 의존성(pyzmq/pydantic/msgpack)이 설치되지 않음
+- **해결**:
+  ```bash
+  cd ~/IsaacLab/source/leisaac && pip install -e ".[gr00t]"
+  ```
+
+### flash-attn 설치가 컴파일 단계에서 실패
+
+- **원인**: 시스템에 nvcc가 없음
+- **해결**: prebuilt wheel로 설치
+  ```bash
+  pip install "https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.1.post4/flash_attn-2.7.1.post4+cu12torch2.5cxx11abiFALSE-cp310-cp310-linux_x86_64.whl"
+  ```
+
+### 서버가 체크포인트를 못 읽음 (`config.json` 없음)
+
+- **원인**: `inference_service.py`는 완전한 모델 디렉토리만 로드합니다. LoRA adapter만 있는 체크포인트(`adapter_config.json` + `adapter_model.safetensors`)는 그대로 못 씁니다.
+- **해결**: base 모델에 adapter를 병합해 독립 체크포인트를 만드세요.
+  ```bash
+  python merge_lora.py          # 또는 merge_lora_fulllora.py
+  ```
+
+---
+
+## StarVLA
+
+### venv를 활성화했는데도 설치한 패키지를 `import` 못함
+
+- **증상**: `which pip` → `/usr/bin/pip`, `pip --version` → python 3.12
+- **원인**: `uv venv`는 venv 안에 pip를 만들지 않습니다(`--seed` 없이는). PATH에서 다음 순번인 시스템 pip가 대신 실행되어 **시스템 Python 3.12에 설치**됩니다.
+- **해결**: 이 저장소에서는 **항상 `uv pip install ...`** 을 쓰세요. `uv pip`는 활성화된 venv를 정확히 잡습니다.
+
+### flash-attn: `OSError: CUDA_HOME environment variable is not set`
+
+- **원인**: 드라이버만 있고 CUDA 툴킷(nvcc)이 없는 상태에서 소스 빌드를 시도함
+- **해결**: 환경에 맞는 prebuilt wheel을 받아 설치
+  ```bash
+  python -c "import torch; print(torch.__version__, torch.version.cuda, torch._C._GLIBCXX_USE_CXX11_ABI)"
+  gh release download v2.7.4.post1 --repo Dao-AILab/flash-attention \
+    --pattern "flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl"
+  uv pip install ./flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl
+  ```
+- **하지 말 것**: `nvidia-cuda-nvcc-cu12` pip 패키지에는 `ptxas`만 있고 실제 `nvcc` 실행파일이 없어 이 용도로 쓸 수 없습니다.
+
+### 학습 시작 시 `MissingCUDAException: CUDA_HOME does not exist`
+
+- **원인**: `train_starvla.py`가 무조건 `DeepSpeedPlugin()`을 생성하고, deepspeed는 **import 시점에** `$CUDA_HOME/bin/nvcc -V`를 호출해 버전을 확인합니다. 컴파일을 안 해도 nvcc가 실재해야 합니다 (flash-attn의 prebuilt wheel 우회는 여기엔 안 통함).
+- **해결**:
+  ```bash
+  sudo apt install --no-install-recommends -y nvidia-cuda-toolkit
+  export CUDA_HOME=/usr/lib/nvidia-cuda-toolkit
+  ```
+  Ubuntu 저장소 버전은 CUDA 12.0이지만 torch가 cu124여도 됩니다 (deepspeed는 major 버전만 비교). `--no-install-recommends`를 빼면 불필요한 패키지 60여 개가 같이 깔립니다.
+- **참고**: `apt update`가 무관한 저장소(예: librealsense) 때문에 실패하면 `apt install`만 따로 실행하세요.
+
+### `torch.OutOfMemoryError` (24GB GPU)
+
+- **원인**: `freeze_modules`가 비어 있으면 Qwen3-VL-4B 백본 포함 **4.5B 파라미터 전부**가 학습 대상이 됩니다. AdamW는 파라미터당 fp32로 momentum+variance+master weight를 들고 있어야 해서 수십 GB가 필요합니다.
+- **해결**: 백본 동결 + 옵티마이저 CPU offload + batch 1 — 셋 다 필요합니다.
+  ```bash
+  --trainer.freeze_modules "qwen_vl_interface"
+  --config_file examples/SO101_Marker/train_files/deepspeed_zero2_offload.yaml
+  --datasets.vla_data.per_device_batch_size 1
+  ```
+  제공된 학습 스크립트들에는 이미 반영돼 있습니다. 실측: bs=1 → 피크 20.3 GiB, bs=2 → 23.6 GiB(위험), bs=4 → 즉시 OOM.
+
+### 정책 서버가 뜨지 않음 (`read_mode_config` 관련)
+
+- **원인**: `config.yaml`과 `dataset_statistics.json`이 `.pt` 파일 기준 **두 단계 위 디렉토리**(런 디렉토리 최상단)에 있어야 합니다.
+- **해결**: `push_model_to_hf.py`로 런 디렉토리 전체를 업로드했다면 구조가 맞습니다. `.pt` 파일만 따로 옮기지 마세요.
+  ```text
+  <run_dir>/
+  ├── config.yaml                 ← 여기
+  ├── dataset_statistics.json     ← 여기
+  └── checkpoints/steps_N_pytorch_model.pt
+  ```

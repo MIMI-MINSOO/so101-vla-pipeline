@@ -1,53 +1,68 @@
 # SO-101 CupStack VLA Pipeline
 
-SO-101(SO-ARM101) 로봇팔로 **Isaac Sim 시뮬레이션 teleop 데이터 수집 → VLA(Vision-Language-Action) 정책 파인튜닝 → sim/real 추론**까지 이어지는 파이프라인 정리 문서입니다.
+SO-101(SO-ARM101) 로봇팔로 **Isaac Sim에서 teleop 데이터를 수집 → VLA(Vision-Language-Action) 정책 파인튜닝 → 시뮬레이션/실기에서 추론**까지 이어지는 파이프라인입니다.
 
-이 저장소는 **문서 전용**입니다. IsaacLab/leisaac, openpi, Isaac-GR00T, StarVLA는 각각 독립된 대형 오픈소스 코드베이스라 코드를 이 안으로 옮기지 않았고, 각자 fork에 실제 커밋을 넣어 아래처럼 참조합니다.
+태스크는 CupStack (marker-in-cup): 책상 위 마커를 집어 컵에 꽂는 동작입니다.
 
-| 코드베이스 | 역할 | 본인 fork |
-|---|---|---|
-| [IsaacLab](https://github.com/MIMI-MINSOO/IsaacLab) + [LeIsaac](https://github.com/MIMI-MINSOO/leisaac-cupstack) | Isaac Sim 태스크, teleop, 데이터 변환, RL 확장 | [REFERENCES.md](REFERENCES.md) |
-| [openpi](https://github.com/MIMI-MINSOO/openpi) | π0 (pi0) LoRA fine-tuning | 〃 |
-| [Isaac-GR00T](https://github.com/MIMI-MINSOO/Isaac-GR00T) | GR00T N1.5 LoRA fine-tuning | 〃 |
-| [StarVLA](https://github.com/MIMI-MINSOO/starVLA) | Qwen3-VL 백본 기반 VLA (아키텍처 비교) | 〃 |
-
-## 파이프라인 개요
-
-**Baseline (검증 완료)** 과 **Research Extension (진행 중/실험적)** 을 분리해서 표기합니다 — 전체가 하나의 완결된 파이프라인처럼 보이지 않도록 하는 게 중요합니다.
+## 전체 흐름
 
 ```text
-Isaac Sim Teleop (SO-101 leader arm)
+①  환경 구축
+        │
+②  Teleop 데이터 수집          SO-101 리더암으로 시뮬레이션 조작
+        │                      → datasets/*.hdf5
+        ▼
+③  LeRobot 포맷 변환
+        │                      → ~/.cache/huggingface/lerobot/<id>/marker_100
+        │
+        ├──────────────┬──────────────────────┐
+        ▼              ▼                      ▼
+④ openpi π0      ④ Isaac-GR00T N1.5      ④ StarVLA (Qwen3-VL)
+   LoRA 학습          LoRA 학습                action head 학습
+        │              │                      │
+        ▼              ▼                      ▼
+⑤  정책 서버 기동 (websocket 또는 ZMQ)
         │
         ▼
-   HDF5 → LeRobot Dataset (mimiminsoo/marker_100, 97 episodes)
+⑥  Isaac Sim 평가
         │
-        ├──▶ openpi π0 LoRA fine-tuning ──▶ Sim Eval ──▶ Real Robot Deployment   ← 검증된 baseline
-        │
-        ├──▶ GR00T N1.5 LoRA fine-tuning ──▶ Sim Eval                            ← Architecture Comparison
-        │
-        └──▶ StarVLA (Qwen3-VL, 백본 동결) fine-tuning ──▶ Sim Eval               ← Architecture Comparison
-
+        ▼
+⑦  실기 배포 (SO-101 실물)
 ```
 
-## 문서 목록
+## 문서
 
-- [PIPELINE_COMMANDS.md](docs/PIPELINE_COMMANDS.md) — 처음부터 끝까지 복붙 가능한 명령어
-- [ARCHITECTURE_COMPARISON.md](docs/ARCHITECTURE_COMPARISON.md) — π0 vs GR00T N1.5 같은 데이터로 비교
-- [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) — 실제로 겪은 문제와 해결
-- [REFERENCES.md](REFERENCES.md) — 원본 코드베이스 fork/커밋 링크
-- [patches/](patches/) — openpi/GR00T fork가 없던 시절 텍스트로만 보관했던 스크립트 (지금은 각 fork에 실제 커밋으로 들어가 있어 참고용으로만 남김)
+| 문서 | 내용 |
+|---|---|
+| **[PIPELINE_COMMANDS.md](docs/PIPELINE_COMMANDS.md)** | ①~⑦ 전 과정 — 환경 구축, 데이터 수집/변환, **π0 · GR00T** 학습·서빙·평가, 실기 배포 |
+| **[STARVLA_PIPELINE.md](docs/STARVLA_PIPELINE.md)** | **StarVLA** 경로 — 환경·데이터로더 구조가 달라 분리. ③번 데이터셋을 그대로 받아서 시작 |
+| [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 실행이 막히는 오류와 해결 |
+| [REFERENCES.md](REFERENCES.md) | 원본 코드베이스 fork/커밋 링크, HF 데이터셋·체크포인트 |
 
-## 환경
+처음 따라 하신다면 **PIPELINE_COMMANDS.md를 위에서부터 순서대로** 읽으시면 됩니다. StarVLA는 그 뒤에 별도로 보세요.
+
+## 코드베이스
+
+문서만 이 저장소에 있고, 코드는 각 fork에 있습니다.
+
+| fork | 역할 |
+|---|---|
+| [IsaacLab](https://github.com/MIMI-MINSOO/IsaacLab) | 시뮬레이터 (v2.3.2, 수정 없음) |
+| [leisaac-cupstack](https://github.com/MIMI-MINSOO/leisaac-cupstack) | CupStack 태스크, teleop, 데이터 변환, 평가 클라이언트 |
+| [openpi](https://github.com/MIMI-MINSOO/openpi) | π0 LoRA 학습·서빙 |
+| [Isaac-GR00T](https://github.com/MIMI-MINSOO/Isaac-GR00T) | GR00T N1.5 LoRA 학습·서빙 |
+| [starVLA](https://github.com/MIMI-MINSOO/starVLA) | StarVLA (Qwen3-VL 백본) 학습·서빙 |
+
+세 학습 프레임워크는 **각각 독립된 venv**를 씁니다 (conda 미사용).
+
+## 검증 환경
 
 ```text
-OS            : Ubuntu 24.04 LTS
-GPU           : NVIDIA GeForce RTX 3090 (24GB)
-Isaac Sim     : 5.1.0
-IsaacLab      : v2.3.2
-Python        : 3.11 (uv venv, conda 미사용)
-VLA backends  : openpi (JAX, π0 LoRA) / Isaac-GR00T (PyTorch, N1.5 LoRA)
+OS       : Ubuntu 24.04 LTS
+GPU      : NVIDIA GeForce RTX 3090 (24GB) × 1
+Isaac Sim: 5.1.0
+IsaacLab : v2.3.2
+Python   : 3.11 (IsaacLab/openpi) / 3.10 (GR00T/StarVLA)
 ```
 
-## 알려진 한계 (문서화 시점 기준)
-
-- 수집 데이터셋(HDF5)은 실제 60Hz로 기록되지만 LeRobot 변환 시 다운샘플 없이 `fps=30`으로만 라벨링되어 있습니다. `action_horizon=30`인 π0 청크의 실제 물리 시간은 1.0초가 아니라 약 0.5초입니다 (자세한 근거는 TROUBLESHOOTING.md).
+VRAM 24GB 기준으로 batch size와 메모리 설정이 잡혀 있습니다. 더 큰 GPU를 쓰신다면 각 문서의 해당 주석을 참고해 올리세요.
