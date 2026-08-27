@@ -51,4 +51,3 @@ VLA backends  : openpi (JAX, π0 LoRA) / Isaac-GR00T (PyTorch, N1.5 LoRA)
 ## 알려진 한계 (문서화 시점 기준)
 
 - 수집 데이터셋(HDF5)은 실제 60Hz로 기록되지만 LeRobot 변환 시 다운샘플 없이 `fps=30`으로만 라벨링되어 있습니다. `action_horizon=30`인 π0 청크의 실제 물리 시간은 1.0초가 아니라 약 0.5초입니다 (자세한 근거는 TROUBLESHOOTING.md).
-- 현재 `--policy_action_horizon`으로 실행 개수를 줄여도(예: 30→10) 재추론 시 이전 청크 정보를 전혀 반영하지 않고 매번 완전히 새로 추론합니다(순수 truncate-and-discard). Physical Intelligence의 Real-Time Chunking 같은 청크 블렌딩 기법은 구현돼 있지 않습니다.
