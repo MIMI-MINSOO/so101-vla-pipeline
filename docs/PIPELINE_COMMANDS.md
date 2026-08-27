@@ -183,7 +183,7 @@ python scripts/evaluation/policy_inference.py \
 
 ---
 
-## 4. 실로봇 배포 (openpi,GROOT 서버 재사용)
+## 4. 실로봇 배포 (openpi,GR00T 서버 재사용)
 
 ```bash
 source ~/IsaacLab/env_isaaclab/bin/activate
