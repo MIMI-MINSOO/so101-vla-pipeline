@@ -30,6 +30,14 @@
 - 참조 커밋: `4af2b622892f7dcb5aae5a3fb70bcb02dc217b96` (N1.5 계열, mainline — `n1-release` 브랜치 아님을 직접 확인) 위에 커밋
 - 커스텀 data config/학습·병합·서빙 스크립트 커밋 완료. 체크포인트(7~8GB)는 gitignore 처리, HF Hub 링크로만 참조
 
+## RLinf
+
+- 원본: https://github.com/RLinf/RLinf
+- **본인 fork**: https://github.com/MIMI-MINSOO/RLinf (branch `cupstack-grpo`)
+- fork base: `be8d5c2d28015146355dd2b47bce97331339f9d1`
+- CupStack 태스크 통합(그룹 초기상태 동기화 포함), 단일 GPU FSDP weight-sync VRAM/state_dict 수정 체인, 검증 스크립트 커밋 완료
+- ⚠️ RLinf는 자체 IsaacLab fork를 씁니다 (공식 v2.3.2가 아님). 두 fork 사이의 API 차이에서 실제 버그가 나온 적 있습니다 — [RL_PIPELINE.md](docs/RL_PIPELINE.md) 참고
+
 ## StarVLA
 
 - 원본: https://github.com/starVLA/starVLA

@@ -28,6 +28,16 @@ SO-101(SO-ARM101) 로봇팔로 **Isaac Sim에서 teleop 데이터를 수집 → 
         │
         ▼
 ⑦  실기 배포 (SO-101 실물)
+
+
+─────────── Research Extension (진행 중, 아직 결과물 없음) ───────────
+
+④ π0 SFT 체크포인트
+        │
+        │  RLinf GRPO RL fine-tuning + dense reward + curriculum
+        ▼
+   랜덤화 범위를 넓혀가며 정책의 in-distribution 확장
+   → 현재 인프라까지만 완성 (39스텝 학습 확인, 체크포인트 저장에서 막힘)
 ```
 
 ## 문서
@@ -36,10 +46,13 @@ SO-101(SO-ARM101) 로봇팔로 **Isaac Sim에서 teleop 데이터를 수집 → 
 |---|---|
 | **[PIPELINE_COMMANDS.md](docs/PIPELINE_COMMANDS.md)** | ①~⑦ 전 과정 — 환경 구축, 데이터 수집/변환, **π0 · GR00T** 학습·서빙·평가, 실기 배포 |
 | **[STARVLA_PIPELINE.md](docs/STARVLA_PIPELINE.md)** | **StarVLA** 경로 — 환경·데이터로더 구조가 달라 분리. ③번 데이터셋을 그대로 받아서 시작 |
+| [RL_PIPELINE.md](docs/RL_PIPELINE.md) | **RLinf GRPO RL fine-tuning** — ④의 π0 SFT 체크포인트를 받아서 시작. ⚠️ 진행 중인 연구 트랙 |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 실행이 막히는 오류와 해결 |
 | [REFERENCES.md](REFERENCES.md) | 원본 코드베이스 fork/커밋 링크, HF 데이터셋·체크포인트 |
 
 처음 따라 하신다면 **PIPELINE_COMMANDS.md를 위에서부터 순서대로** 읽으시면 됩니다. StarVLA는 그 뒤에 별도로 보세요.
+
+RL_PIPELINE.md는 다른 세 문서와 성격이 다릅니다 — 나머지는 실제로 정책을 만들어낸 검증된 경로지만, RL은 인프라만 완성되고 실제 실험은 아직 착수 전입니다.
 
 ## 코드베이스
 

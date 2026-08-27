@@ -152,3 +152,63 @@
   ├── dataset_statistics.json     ← 여기
   └── checkpoints/steps_N_pytorch_model.pt
   ```
+
+---
+
+## RLinf (GRPO RL)
+
+RLinf 실행 실패의 대부분은 **환경변수 누락**입니다. [RL_PIPELINE.md](RL_PIPELINE.md)의 env var 5종을 먼저 전부 export했는지 확인하세요 — 하나만 빠져도 아래처럼 전혀 다른 증상으로 나타나 원인 추적이 어렵습니다.
+
+### `Unable to bootstrap inner kit kernel: EOF when reading a line` (프로세스가 멈춤)
+
+- **원인**: `OMNI_KIT_ACCEPT_EULA` 미설정. Kit이 EULA 동의를 stdin으로 묻는데 백그라운드 실행이라 stdin이 닫혀 있어 즉시 EOF를 만납니다. 크래시가 아니라 hang이라 더 헷갈립니다.
+- **해결**: `export OMNI_KIT_ACCEPT_EULA=Y` + 백그라운드 실행 시 `< /dev/null` 명시
+
+### `TypeError: 'NoneType' object is not callable` (AppLauncher)
+
+- **원인**: `run_embodiment.sh`의 `ISAAC_PATH` 기본값이 `/path/to/isaac-sim`이라는 **플레이스홀더 문자열**입니다. 이 값이 Ray 워커에 전파되면 `isaacsim/__init__.py::expose_api()`가 `SimulationApp`을 못 찾아 `None`으로 남깁니다.
+- **해결**: `export ISAAC_PATH=$(pwd)/.venv/lib/python3.11/site-packages/isaacsim`
+- **참고**: standalone 스크립트로 테스트할 때는 이 변수를 아예 설정하지 않아 문제가 없다가, `run_embodiment.sh`를 거치면서 처음 나타납니다.
+
+### env 생성이 15분 넘게 걸리거나 사실상 멈춤 / Vulkan `ERROR_INCOMPATIBLE_DRIVER`
+
+- **원인**: RLinf venv의 `activate`가 `VK_ICD_FILENAMES`를 존재하지 않는 경로(`/etc/vulkan/icd.d/`)로 설정합니다. 이 변수가 설정되면 Vulkan 로더는 **기본 검색 경로를 완전히 무시**하므로 GPU 디바이스 생성이 통째로 실패하고, PhysX가 CPU로 폴백합니다.
+- **해결**: 실제 경로로 런타임 override (activate 스크립트 자체는 건드리지 않음)
+  ```bash
+  export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json
+  export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json
+  ```
+
+### `RuntimeError: nvrtc: error: failed to open libnvrtc-builtins.so.13.0`
+
+- **원인**: RLinf venv의 torch가 `nvidia-cuda-nvrtc-cu13`을 설치는 했지만 동적 링커 검색 경로에 없음
+- **해결**:
+  ```bash
+  export LD_LIBRARY_PATH=.venv/lib/python3.11/site-packages/nvidia/cu13/lib:.venv/lib/python3.11/site-packages/nvidia/cuda_nvrtc/lib:${LD_LIBRARY_PATH}
+  ```
+
+### `ValueError` — precision 설정
+
+- **원인**: `rlinf/config.py::torch_dtype_from_precision`이 `"bf16"` / `"bf16-mixed"`만 인식합니다. YAML에 `precision: bfloat16`이라고 쓰면 실패합니다.
+- **해결**: `precision: "bf16"`
+
+### advantage가 전부 NaN (reward는 정상값)
+
+- **원인**: `algorithm.filter_rewards`는 sparse 0/1 성공 보상을 전제로 "그룹 전체가 성공/실패한 그룹"을 드롭하는 장치입니다. dense reward의 에피소드 합은 작은 음수(-0.04 근처)라 기본 bound `[0.1, 0.9]`에 절대 들어가지 않아 매 스텝 모든 그룹이 마스킹됩니다.
+- **해결**: `filter_rewards: false`
+
+### 실패한 실행 후 GPU/RAM이 계속 잡혀 있음
+
+- **원인**: 좀비 ray 워커. 관측 사례: 고아 actor 하나가 21GB RSS 점유
+- **해결**:
+  ```bash
+  pgrep -f "ray::" | xargs -r kill -9
+  pkill -9 -f "train_embodied_agent"
+  ```
+  `recover_and_relaunch.sh`에 이 정리 단계가 포함돼 있습니다. 실행 전후로 `nvidia-smi` 확인을 습관화하세요.
+
+### 체크포인트 저장(`save_interval`) 스텝에서 OOM
+
+- **상태**: **미해결 — 현재 이 파이프라인의 최우선 블로커**
+- **원인**: `save_checkpoint` → `torch.distributed.checkpoint.state_dict.get_state_dict()`의 DCP gather 오버헤드. 단일 GPU라 실제 샤딩이 없는데도 6GB+를 추가로 씁니다. 저장 시에는 optimizer state까지 함께 gather하므로 weight sync 때보다 무겁습니다.
+- **우회**: `runner.save_interval`을 크게 잡아 저장을 미루면 학습 자체는 계속 돌지만, 결과물을 못 얻으므로 근본 해결이 필요합니다. weight sync 경로에 적용한 `world_size == 1` DCP 우회를 저장 경로에도 적용하는 것이 유력한 방향입니다.
