@@ -51,7 +51,7 @@
 | 이름 | repo_id | 내용 | 공개 |
 |---|---|---|---|
 | 수집 데이터셋 | `mimiminsoo/marker_100` | LeRobot v2.1, 97 episodes / 31,291 frames | ✅ |
-| π0 LoRA 체크포인트 | `mimiminsoo/pi0-lora-marker100-h30` | config `pi0_lora_marker_100`, action_horizon=30, 6.16GB | ✅ |
+| π0 LoRA 체크포인트 (baseline) | `mimiminsoo/pi0-lora-marker100-h10` | config `pi0_lora_marker_100_h10`, action_horizon=10, 6.16GB | ✅ |
 | GR00T N1.5 LoRA (action head만) | `mimiminsoo/groot_h10` | action_horizon=10. **adapter만 26MB — 서빙 전 `merge_lora.py` 필요** | ✅ |
 | GR00T N1.5 LoRA (백본 포함) | `mimiminsoo/groot_h10_fulllora` | action_horizon=10, `--lora-full-model` | ⚠️ **비공개** |
 | StarVLA 체크포인트 | `mimiminsoo/starvla-qwenpiv3-so101-marker-rt1warmstart` 외 5개 | 약 10~11GB, `config.yaml`+`dataset_statistics.json` 포함 | ✅ |

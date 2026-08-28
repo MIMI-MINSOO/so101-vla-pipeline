@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Download a published pi0 checkpoint (and optionally its dataset) from the Hugging Face Hub.
 #
-#   ./download_pi0.sh                      # default: pi0-lora-marker100-h30
-#   ./download_pi0.sh pi0-lora-marker100-h10
-#   ./download_pi0.sh pi0-lora-marker100-h30 --with-dataset
+#   ./download_pi0.sh                      # default: pi0-lora-marker100-h10 (baseline)
+#   ./download_pi0.sh pi0-lora-marker100-h30
+#   ./download_pi0.sh pi0-lora-marker100-h10 --with-dataset
 #   DEST=/data/ckpts ./download_pi0.sh     # change download destination
 #
 # Prints the exact serve_policy.py command for the model you downloaded when it finishes.
@@ -11,21 +11,20 @@ set -euo pipefail
 
 HF_USER="${HF_USER:-mimiminsoo}"
 DEST="${DEST:-./checkpoints}"
-MODEL="${1:-pi0-lora-marker100-h30}"
+MODEL="${1:-pi0-lora-marker100-h10}"
 WITH_DATASET=""
 [[ "${2:-}" == "--with-dataset" ]] && WITH_DATASET=1
 
 # model repo -> (openpi config name, dataset repo, action_horizon)
 case "${MODEL}" in
-  pi0-lora-marker100-h30) CONFIG=pi0_lora_marker_100;     DATASET=marker_100;      HORIZON=30 ;;
   pi0-lora-marker100-h10) CONFIG=pi0_lora_marker_100_h10; DATASET=marker_100;      HORIZON=10 ;;
   pi0-lora-marker)        CONFIG=pi0_lora_marker;         DATASET=marker_50;       HORIZON=10 ;;
+  pi0-lora-marker100-h30) CONFIG=pi0_lora_marker_100;     DATASET=marker_100;      HORIZON=30 ;;
   pi0_150)                CONFIG=pi0_150;                 DATASET=marker_150;      HORIZON=30 ;;
   pi0_180_real)           CONFIG=pi0_180_real;            DATASET=marker_180_real; HORIZON=30 ;;
-  pi0_marker100_real_ft)  CONFIG=pi0_marker100_real_ft;   DATASET=marker_100;      HORIZON=30 ;;
   *)
     echo "Unknown model: ${MODEL}" >&2
-    echo "One of: pi0-lora-marker100-h30 pi0-lora-marker100-h10 pi0-lora-marker pi0_150 pi0_180_real pi0_marker100_real_ft" >&2
+    echo "One of: pi0-lora-marker100-h10 pi0-lora-marker pi0-lora-marker100-h30 pi0_150 pi0_180_real" >&2
     exit 2 ;;
 esac
 
