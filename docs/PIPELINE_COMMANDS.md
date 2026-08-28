@@ -13,7 +13,7 @@ StarVLA는 환경/데이터 로더 구조가 완전히 달라서 별도 문서�
         │
 [2] LeRobot 포맷 변환                                   → ~/.cache/huggingface/lerobot/<id>/marker_100
         │
-        ├──[3-A] openpi π0 LoRA 학습                    → checkpoints/pi0_lora_marker_100/marker100_h30/29999
+        ├──[3-A] openpi π0 LoRA 학습                    → checkpoints/pi0_lora_marker_100_h10/marker100_h10/29999
         │              │
         │         [4-A] 정책 서버 기동 (포트 8000)
         │              │
@@ -165,18 +165,22 @@ cd ~/openpi
 export XLA_PYTHON_CLIENT_MEM_FRACTION=0.9
 
 # 1) 정규화 통계 — 데이터셋이나 action_horizon이 바뀌면 반드시 다시 계산
-uv run scripts/compute_norm_stats.py --config-name pi0_lora_marker_100
+uv run scripts/compute_norm_stats.py --config-name pi0_lora_marker_100_h10
 
 # 2) 학습 (첫 실행 시 pi0_base 사전학습 가중치를 자동 다운로드)
-uv run scripts/train.py pi0_lora_marker_100 --exp-name=marker100_h30
+uv run scripts/train.py pi0_lora_marker_100_h10 --exp-name=marker100_h10
 ```
 
-- 이 config(`src/openpi/training/config.py`의 `pi0_lora_marker_100`)는 action_horizon=30, batch_size=8(RTX 3090 24GB 기준), 30,000 steps, LoRA만 학습(backbone freeze)입니다.
+- 이 config(`src/openpi/training/config.py`의 `pi0_lora_marker_100_h10`)는 action_horizon=10, batch_size=8(RTX 3090 24GB 기준), 30,000 steps, LoRA만 학습(backbone freeze)입니다.
+- action_horizon=30 버전을 쓰려면 config 이름을 `pi0_lora_marker_100`, exp-name을 `marker100_h30`으로 바꾸면 됩니다. **둘을 함께 바꿔야** 체크포인트와 norm stats가 섞이지 않습니다.
 - 학습은 GPU를 거의 독점하므로 정책 서버 등 다른 GPU 프로세스를 먼저 종료하세요.
 - 이어서 학습하려면 `--resume`, 같은 이름으로 새로 시작하려면 `--overwrite`.
-- 래퍼 스크립트 `./run_marker_100.sh`는 위 두 단계를 묶고 실수 방지 가드를 넣은 것입니다.
+- 래퍼 스크립트 `./run_marker_100.sh`는 위 두 단계를 묶고 실수 방지 가드를 넣은 것입니다. 기본값이 h30이므로 h10으로 돌리려면:
+  ```bash
+  CONFIG_NAME=pi0_lora_marker_100_h10 EXP_NAME=marker100_h10 ./run_marker_100.sh
+  ```
 
-**결과물**: `checkpoints/pi0_lora_marker_100/marker100_h30/29999/`
+**결과물**: `checkpoints/pi0_lora_marker_100_h10/marker100_h10/29999/`
 
 ## [4-A] π0 정책 서버 기동
 
@@ -188,8 +192,8 @@ uv run scripts/serve_policy.py \
     --port 8000 \
     --default-prompt "Pick up the marker and place it into the cup, then reset the arm to rest state." \
     policy:checkpoint \
-    --policy.config=pi0_lora_marker_100 \
-    --policy.dir=checkpoints/pi0_lora_marker_100/marker100_h30/29999
+    --policy.config=pi0_lora_marker_100_h10 \
+    --policy.dir=checkpoints/pi0_lora_marker_100_h10/marker100_h10/29999
 ```
 
 JAX는 기본적으로 GPU 메모리를 비율만큼 미리 예약합니다. Isaac Sim과 같은 GPU를 나눠 쓰려면 `0.35` 정도로 낮춰야 PhysX가 물리 씬을 만들 메모리가 남습니다.
@@ -207,12 +211,12 @@ python scripts/evaluation/policy_inference.py \
     --eval_rounds=20 \
     --policy_type=openpi \
     --policy_host=localhost --policy_port=8000 \
-    --policy_action_horizon=30 \
+    --policy_action_horizon=10 \
     --policy_language_instruction="Pick up the marker and place it into the cup, then reset the arm to rest state." \
     --device=cuda --enable_cameras
 ```
 
-- `--policy_port`/`--policy_action_horizon`은 **반드시 명시**하세요. 기본값(5555 / 16)은 GR00T용입니다.
+- `--policy_port`/`--policy_action_horizon`은 **반드시 명시**하세요. 기본값(5555 / 16)은 GR00T용입니다. `--policy_action_horizon`은 학습에 쓴 config의 action_horizon과 맞추세요(h10이면 10, h30이면 30).
 - `--policy_language_instruction`은 [2]단계의 `--task_description`과 글자 그대로 같아야 합니다.
 - 에피소드별 영상을 남기려면 `--video_dir=./artifacts/eval_videos`.
 

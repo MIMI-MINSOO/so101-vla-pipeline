@@ -46,7 +46,7 @@ DEST=/data/ckpts bash scripts/download_pi0.sh        # 저장 위치 변경
 
 전부 `--policy.config`에 위 config 이름을 그대로 넘기면 됩니다. config 이름이 다르면 norm_stats를 못 찾아 서빙이 실패합니다.
 
-`pi0_180_real`은 이름과 달리 순수 실기 데이터가 아니라 **sim + 실기 혼합**입니다 — `marker_150`(sim 146ep) + `marker_real`(실기 30ep)이며, episode 수와 frame 수가 두 데이터셋의 합과 정확히 일치합니다(146+30=176, 44,215+18,433=62,648). 이름의 "150"/"180"은 반올림 표현입니다.
+`pi0_180_real`은 이름과 달리 순수 실기 데이터가 아니라 **sim + 실기 혼합**으로 학습됐습니다. 데이터셋 표의 `marker_180_real` 항목 참고 — 이름의 "150"/"180"은 반올림 표현이고 실제 episode 수는 146/176입니다.
 
 ### ⚠️ 주의사항
 
@@ -62,13 +62,12 @@ DEST=/data/ckpts bash scripts/download_pi0.sh        # 저장 위치 변경
 
 | HF repo | episodes | frames | 포맷 | 종류 | 비고 |
 |---|---|---|---|---|---|
-| **`mimiminsoo/marker_100`** | 97 | 31,291 | v2.1 | sim | **주력 데이터셋.** 위 h30/h10 모델이 이걸로 학습됨 |
+| **`mimiminsoo/marker_100`** | 97 | 31,291 | v2.1 | sim | **주력 데이터셋.** baseline(h10)과 h30이 이걸로 학습됨 |
 | `mimiminsoo/marker_50` | 49 | 12,924 | v2.1 | sim | 초기 수집분 |
 | `mimiminsoo/marker_150` | 146 | 44,215 | v2.1 | sim | 확장 수집분 |
-| `mimiminsoo/marker_180_real` | 176 | 62,648 | v2.1 | 실기 | 실제 로봇 |
+| `mimiminsoo/marker_180_real` | 176 | 62,648 | v2.1 | 혼합 | sim 146 (`marker_150`) + 실기 30 (`marker_real`) |
 | `mimiminsoo/marker_real` | 30 | 18,433 | v3.0 | 실기 | |
-| `mimiminsoo/marker_combined` | 79 | 31,357 | v3.0 | 혼합 | LeRobot 경로용 |
-| `mimiminsoo/marker` | 4 | 1,216 | v2.1 | sim | 스모크 테스트용 소형 |
+| `mimiminsoo/marker_combined` | 79 | 31,357 | v3.0 | 혼합 | sim 49 (`marker_50`) + 실기 30 (`marker_real`). LeRobot 경로용 |
 
 전부 `fps=30`, `robot_type=so101_follower`, 카메라 `front`/`wrist` 2대, action/state 6차원(`shoulder_pan`, `shoulder_lift`, `elbow_flex`, `wrist_flex`, `wrist_roll`, `gripper`)입니다.
 
