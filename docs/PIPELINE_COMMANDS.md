@@ -149,6 +149,16 @@ python scripts/convert/isaaclab2lerobotv3.py \
     --task_description="Pick up the marker and place it into the cup, then reset the arm to rest state." \
     --enable_cameras
 ```
+```bash
+python scripts/convert/isaaclab2lerobot.py \
+  --task_name=LeIsaac-SO101-CupStack-v0 \
+  --repo_id=mimiminsoo/test \
+  --fps=30 \
+  --hdf5_root=./datasets/marker_100 \
+  --hdf5_files=dataset.hdf5 \
+  --device=cuda:0
+
+```
 
 - `--task_description`은 **학습 시 언어 지시문이 되고, 이후 평가할 때 주는 프롬프트와 글자 그대로 같아야** 합니다.
 - 여러 HDF5를 합치려면 `--hdf5_files=a.hdf5,b.hdf5`처럼 콤마로 나열.
