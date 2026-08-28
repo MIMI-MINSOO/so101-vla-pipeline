@@ -46,9 +46,12 @@
 
 ## 데이터셋 / 체크포인트 (Hugging Face)
 
-| 이름 | repo_id | 내용 |
-|---|---|---|
-| 수집 데이터셋 | `mimiminsoo/marker_100` | LeRobot Dataset, 97 episodes / 31,291 frames |
-| π0 LoRA 체크포인트 | `mimiminsoo/pi0-lora-marker100-h30` | `pi0_lora_marker_100`, action_horizon=30 |
-| GR00T N1.5 LoRA 체크포인트 (action head만) | `mimiminsoo/groot_h10` | action_horizon=10 |
-| GR00T N1.5 LoRA 체크포인트 (백본 포함) | `mimiminsoo/groot_h10_fulllora` | action_horizon=10, `--lora-full-model` |
+π0 체크포인트·데이터셋의 전체 목록과 다운로드 방법은 **[APPENDIX_HF_ASSETS.md](docs/APPENDIX_HF_ASSETS.md)** 에 정리돼 있습니다. 아래는 대표 항목만입니다.
+
+| 이름 | repo_id | 내용 | 공개 |
+|---|---|---|---|
+| 수집 데이터셋 | `mimiminsoo/marker_100` | LeRobot v2.1, 97 episodes / 31,291 frames | ✅ |
+| π0 LoRA 체크포인트 | `mimiminsoo/pi0-lora-marker100-h30` | config `pi0_lora_marker_100`, action_horizon=30, 6.16GB | ✅ |
+| GR00T N1.5 LoRA (action head만) | `mimiminsoo/groot_h10` | action_horizon=10. **adapter만 26MB — 서빙 전 `merge_lora.py` 필요** | ✅ |
+| GR00T N1.5 LoRA (백본 포함) | `mimiminsoo/groot_h10_fulllora` | action_horizon=10, `--lora-full-model` | ⚠️ **비공개** |
+| StarVLA 체크포인트 | `mimiminsoo/starvla-qwenpiv3-so101-marker-rt1warmstart` 외 5개 | 약 10~11GB, `config.yaml`+`dataset_statistics.json` 포함 | ✅ |

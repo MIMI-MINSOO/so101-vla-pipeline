@@ -47,10 +47,17 @@ SO-101(SO-ARM101) 로봇팔로 **Isaac Sim에서 teleop 데이터를 수집 → 
 | **[PIPELINE_COMMANDS.md](docs/PIPELINE_COMMANDS.md)** | ①~⑦ 전 과정 — 환경 구축, 데이터 수집/변환, **π0 · GR00T** 학습·서빙·평가, 실기 배포 |
 | **[STARVLA_PIPELINE.md](docs/STARVLA_PIPELINE.md)** | **StarVLA** 경로 — 환경·데이터로더 구조가 달라 분리. ③번 데이터셋을 그대로 받아서 시작 |
 | [RL_PIPELINE.md](docs/RL_PIPELINE.md) | **RLinf GRPO RL fine-tuning** — ④의 π0 SFT 체크포인트를 받아서 시작. ⚠️ 진행 중인 연구 트랙 |
+| [APPENDIX_HF_ASSETS.md](docs/APPENDIX_HF_ASSETS.md) | **학습 없이 바로 추론만** 해보고 싶을 때 — 공개된 π0 체크포인트/데이터셋 표 + 다운로드 스크립트 |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 실행이 막히는 오류와 해결 |
 | [REFERENCES.md](REFERENCES.md) | 원본 코드베이스 fork/커밋 링크, HF 데이터셋·체크포인트 |
 
 처음 따라 하신다면 **PIPELINE_COMMANDS.md를 위에서부터 순서대로** 읽으시면 됩니다. StarVLA는 그 뒤에 별도로 보세요.
+
+학습은 건너뛰고 **이미 학습된 정책을 받아서 바로 돌려보고 싶다면** APPENDIX_HF_ASSETS.md로 가세요:
+
+```bash
+bash scripts/download_pi0.sh    # π0 체크포인트 다운로드 → 실행 명령어까지 출력
+```
 
 RL_PIPELINE.md는 다른 세 문서와 성격이 다릅니다 — 나머지는 실제로 정책을 만들어낸 검증된 경로지만, RL은 인프라만 완성되고 실제 실험은 아직 착수 전입니다.
 
