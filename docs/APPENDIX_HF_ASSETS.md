@@ -75,14 +75,29 @@ DEST=/data/ckpts bash scripts/download_pi0.sh        # 저장 위치 변경
 
 **포맷 버전 주의**: `v2.1`과 `v3.0`은 디렉토리 레이아웃이 다릅니다. openpi가 요구하는 lerobot 버전과 맞는 것을 받으세요 (이 프로젝트의 openpi 경로는 v2.1 기준으로 검증됨).
 
-### 데이터셋만 따로 받기
+### 데이터셋은 보통 따로 받을 필요가 없습니다
+
+**lerobot 패키지를 설치한다고 데이터셋이 같이 받아지지는 않습니다.** 캐시 경로(`~/.cache/huggingface/lerobot`)는 `lerobot/constants.py`가 정의한 위치일 뿐이고, 실제 데이터는 둘 중 하나로 채워집니다:
+
+1. **직접 변환** — [PIPELINE_COMMANDS.md `[2]`](PIPELINE_COMMANDS.md#2-lerobot-포맷-변환)의 `isaaclab2lerobotv3.py`가 `LeRobotDataset.create(repo_id=...)`로 `~/.cache/huggingface/lerobot/<repo_id>`에 씁니다.
+2. **자동 다운로드** — `LeRobotDataset(repo_id)` 생성 시 로컬에 파일이 없으면 lerobot이 알아서 Hub에서 받아옵니다 (`lerobot/datasets/lerobot_dataset.py`의 `download_episodes()`).
+
+즉 **openpi 학습을 돌리면 데이터셋이 없어도 알아서 받아집니다.** 미리 받아둘 필요는 없습니다.
+
+미리 받아야 하는 경우는 다음과 같습니다:
+
+| 상황 | 미리 다운로드 |
+|---|---|
+| 그냥 학습 실행 | 불필요 (자동) |
+| `HF_HUB_OFFLINE=1` 오프라인 학습 | **필수** — 자동 다운로드가 막힘 |
+| 다운로드 시점을 미리 끝내두고 싶을 때 | 선택 |
 
 ```bash
 hf download mimiminsoo/marker_100 --repo-type dataset \
     --local-dir ~/.cache/huggingface/lerobot/mimiminsoo/marker_100
 ```
 
-openpi 학습에 쓰려면 경로가 `~/.cache/huggingface/lerobot/<repo_id>` 여야 합니다 (config의 `repo_id`와 일치). 이미 그 위치에 있으면 `HF_HUB_OFFLINE=1`로 오프라인 학습이 가능합니다.
+경로는 반드시 `~/.cache/huggingface/lerobot/<repo_id>` 여야 합니다 — openpi config의 `repo_id`와 일치해야 lerobot이 찾습니다. 캐시 위치를 바꾸려면 `HF_LEROBOT_HOME` 환경변수를 쓰세요.
 
 ---
 
