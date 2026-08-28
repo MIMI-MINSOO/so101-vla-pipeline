@@ -311,16 +311,7 @@ python scripts/evaluation/policy_inference.py \
 > `real_robot_inference.py`는 openpi의 **websocket** 프로토콜(`ws://host:port`)로만 통신합니다(`leisaac/policy/base.py`의 `WebsocketServicePolicy`). GR00T 서버는 **ZMQ**로 서빙하므로 이 스크립트로는 그대로 연결되지 않습니다. GR00T 정책을 실기에서 돌리려면 ZMQ 클라이언트(`Gr00tServicePolicyClient` 계열)를 쓰도록 스크립트를 별도로 손봐야 합니다.
 
 ```bash
-source ~/IsaacLab/env_isaaclab/bin/activate
-cd ~/IsaacLab/source/leisaac
-
-python scripts/evaluation/real_robot_inference.py \
-    --robot_port=/dev/ttyACM0 \
-    --front_camera_index=/dev/v4l/by-path/<front-camera-path> \
-    --wrist_camera_index=/dev/v4l/by-path/<wrist-camera-path> \
-    --policy_host=localhost --policy_port=8000 \
-    --language_instruction="Pick up the marker and place it into the cup, then reset the arm to rest state." \
-    --action_horizon=10 --num_episodes=5
+python scripts/evaluation/real_robot_inference.py --robot_port=/dev/ttyACM0 --front_camera_index=/dev/video0 --wrist_camera_index=/dev/video2 --policy_host=localhost --policy_port=8000 --language_instruction="Pick up the marker and place it into the cup, then reset the arm to rest state." --action_horizon=10 --num_episodes=5
 ```
 
 - 카메라는 **숫자 index 대신 `/dev/v4l/by-path/...` 경로**를 쓰세요. 재연결 시 `/dev/videoN` 번호가 바뀌어 front/wrist가 조용히 뒤바뀔 수 있습니다. `ls -la /dev/v4l/by-path/`로 확인.
