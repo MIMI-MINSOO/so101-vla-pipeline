@@ -61,7 +61,7 @@
 - **원인**: `compute_norm_stats.py`를 실행하지 않았거나, 데이터셋/`action_horizon`이 바뀌었는데 예전 통계가 남아있음
 - **해결**:
   ```bash
-  uv run scripts/compute_norm_stats.py --config-name pi0_lora_marker_100
+  uv run scripts/compute_norm_stats.py --config-name pi0_lora_marker_100_h10   # h30이면 pi0_lora_marker_100
   ```
   기존 통계를 강제로 다시 만들려면 `assets/<config_name>/.../norm_stats.json`을 지우고 재실행
 
