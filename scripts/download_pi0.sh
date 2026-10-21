@@ -4,6 +4,7 @@
 #   ./download_pi0.sh                      # default: pi0-lora-marker100-h10 (baseline)
 #   ./download_pi0.sh pi0-lora-marker100-h30
 #   ./download_pi0.sh pi0-lora-marker100-h10 --with-dataset
+#   ./download_pi0.sh --with-dataset       # baseline + its dataset (flag works in any position)
 #   DEST=/data/ckpts ./download_pi0.sh     # change download destination
 #
 # Prints the exact serve_policy.py command for the model you downloaded when it finishes.
@@ -11,9 +12,23 @@ set -euo pipefail
 
 HF_USER="${HF_USER:-mimiminsoo}"
 DEST="${DEST:-./checkpoints}"
-MODEL="${1:-pi0-lora-marker100-h10}"
+MODEL=""
 WITH_DATASET=""
-[[ "${2:-}" == "--with-dataset" ]] && WITH_DATASET=1
+for arg in "$@"; do
+  case "${arg}" in
+    --with-dataset) WITH_DATASET=1 ;;
+    -*)
+      echo "Unknown option: ${arg}" >&2
+      exit 2 ;;
+    *)
+      if [[ -n "${MODEL}" ]]; then
+        echo "Only one model can be given (got '${MODEL}' and '${arg}')" >&2
+        exit 2
+      fi
+      MODEL="${arg}" ;;
+  esac
+done
+MODEL="${MODEL:-pi0-lora-marker100-h10}"
 
 # model repo -> (openpi config name, dataset repo, action_horizon)
 case "${MODEL}" in
