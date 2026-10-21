@@ -79,7 +79,7 @@ DEST=/data/ckpts bash scripts/download_pi0.sh        # 저장 위치 변경
 
 **lerobot 패키지를 설치한다고 데이터셋이 같이 받아지지는 않습니다.** 캐시 경로(`~/.cache/huggingface/lerobot`)는 `lerobot/constants.py`가 정의한 위치일 뿐이고, 실제 데이터는 둘 중 하나로 채워집니다:
 
-1. **직접 변환** — [PIPELINE_COMMANDS.md `[2]`](PIPELINE_COMMANDS.md#2-lerobot-포맷-변환)의 `isaaclab2lerobotv3.py`가 `LeRobotDataset.create(repo_id=...)`로 `~/.cache/huggingface/lerobot/<repo_id>`에 씁니다.
+1. **직접 변환** — [PIPELINE_COMMANDS.md `[2]`](PIPELINE_COMMANDS.md#2-lerobot-포맷-변환)의 `isaaclab2lerobot.py`(v2.1)가 `LeRobotDataset.create(repo_id=...)`로 `~/.cache/huggingface/lerobot/<repo_id>`에 씁니다.
 2. **자동 다운로드** — `LeRobotDataset(repo_id)` 생성 시 로컬에 파일이 없으면 lerobot이 알아서 Hub에서 받아옵니다 (`lerobot/datasets/lerobot_dataset.py`의 `download_episodes()`).
 
 즉 **openpi 학습을 돌리면 데이터셋이 없어도 알아서 받아집니다.** 미리 받아둘 필요는 없습니다.

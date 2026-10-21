@@ -136,12 +136,12 @@ python scripts/environments/teleoperation/teleop_se3_agent.py \
 
 ## [2] LeRobot 포맷 변환
 
-HDF5를 VLA 학습 프레임워크들이 공통으로 읽는 LeRobot Dataset 포맷으로 바꿉니다.
+HDF5를 VLA 학습 프레임워크들이 공통으로 읽는 LeRobot Dataset 포맷으로 바꿉니다. 이 파이프라인의 학습 경로는 **LeRobot v2.1** 포맷 기준으로 검증됐으므로 v2.1 변환기(`isaaclab2lerobot.py`)를 씁니다.
 
 ```bash
-pip install lerobot==0.4.2 && pip install numpy==1.26.0
+pip install lerobot==0.3.3 && pip install numpy==1.26.0
 
-python scripts/convert/isaaclab2lerobotv3.py \
+python scripts/convert/isaaclab2lerobot.py \
     --task_name=LeIsaac-SO101-CupStack-v0 \
     --repo_id=<your-hf-username>/marker_100 \
     --hdf5_root=./datasets/marker_100 \
@@ -149,17 +149,9 @@ python scripts/convert/isaaclab2lerobotv3.py \
     --task_description="Pick up the marker and place it into the cup, then reset the arm to rest state." \
     --enable_cameras
 ```
-```bash
-python scripts/convert/isaaclab2lerobot.py \
-  --task_name=LeIsaac-SO101-CupStack-v0 \
-  --repo_id=mimiminsoo/test \
-  --fps=30 \
-  --hdf5_root=./datasets/marker_100 \
-  --hdf5_files=dataset.hdf5 \
-  --device=cuda:0
 
-```
-
+- v2.1 변환기는 `lerobot==0.3.3`이 필요합니다. [0-2]의 `leisaac[lerobot]`는 0.4.2를 설치하므로 여기서 버전이 내려갑니다.
+- v3.0 포맷이 필요하면(예: LeRobot `lerobot-train` 경로) 같은 인자로 `isaaclab2lerobotv3.py`를 쓰고 `lerobot==0.4.2`를 설치하세요.
 - `--task_description`은 **학습 시 언어 지시문이 되고, 이후 평가할 때 주는 프롬프트와 글자 그대로 같아야** 합니다.
 - 여러 HDF5를 합치려면 `--hdf5_files=a.hdf5,b.hdf5`처럼 콤마로 나열.
 - HF Hub에 올리려면 `--push_to_hub` 또는 나중에 `python scripts/convert/push_to_hub.py --repo_id=<id>/marker_100`.
